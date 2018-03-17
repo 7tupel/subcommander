@@ -1,0 +1,40 @@
+#!/usr/bin/env python
+"""example on how to use the subcommander module
+"""
+from subcommander import Subcommander
+from subcommander import Command
+
+
+class RainbowCommand(Command):
+    """
+    """
+    _command = 'rainbow'
+    _description = 'let the rainbow shine'
+    _hide = False
+
+    def __call__(self, args):
+        print('This is such a shiny rainbow')
+
+class CandyCommand(Command):
+    """
+    """
+    _command = 'candy'
+    _description = 'unicorns love candy'
+    _hide = False
+
+    def __call__(self, args):
+        print('Oh i love candy')
+
+
+
+class Unicorn(Subcommander):
+    """Example Commander
+    """
+    _cmd = __file__
+    _name = 'Unicorn'
+    _default_commands = [RainbowCommand]
+
+
+
+if __name__ == '__main__':
+    commander = Unicorn([CandyCommand])
