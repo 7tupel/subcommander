@@ -1,4 +1,4 @@
-# Project Title
+# Python Subcommander
 
 A simple module to build plugable commandline application commands.
 
