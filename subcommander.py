@@ -1,59 +1,27 @@
-"""
+"""Subcommander class and its necessary helper classes
 """
 import argparse
 import sys
-#import os
-#import importlib
 
 from command import Command
 
-class DuplicateKeyError(Exception):
+class DuplicateCommandError(Exception):
+    """Error if duplicate commands are detected
     """
-    """
-
     def __init__(self, message, key):
         """
         """
-        super(DuplicateKeyError, self).__init__(message)
+        super(DuplicateCommandError, self).__init__(message)
         self.key = key
 
 
-def merge_command_lists(default, extensions):
-    """
-    @deprecated: hodor
-    """
-    for command in extensions:
-        if not command in default:
-            default.append(command)
-        else:
-            raise DuplicateKeyError('Duplicate Key detected', command.command)
-    return default
-
-
-def merge_commands(dicts, duplicate_error=True):
-    """merge any number of dictionaries. strip away duplicate keys. optionally
-    raise error on duplicates
-
-    :param list dicts: a list of all dictionaries to merge
-    :param bool duplicate_error: if True raise error on duplicate keys
-    :raises DuplicateKeyError: if duplicate_error is true and duplicate key exists
-    :returns dict: merge result
-    """
-    result = {}
-    if duplicate_error:
-        for d in dicts:
-            for k, v in d.items():
-                if not k in result:
-                    result[k] = import_command(v)
-                else:
-                    raise DuplicateKeyError('Command duplicate detected!', k)
-    else:
-        result = {k: import_command(v) for d in dicts for k, v in d.items()}
-
-    return result
-
 def build_command_dict(default, extensions):
-    """
+    """merge the default commands and extended commands
+
+    :param [Command] default: list with default command classes
+    :param [Command] extensions: list with extended command classes
+    :raises DuplicateCommandError: if any command key is duplicated
+    :returns: dictionary with commands ins form 'command-key': CommandClass
     """
     command_dict = {}
 
@@ -62,7 +30,7 @@ def build_command_dict(default, extensions):
         try:
             command_dict[command.command] = command
         except KeyError:
-            raise DuplicateKeyError('Duplicate Key detected', command.command)
+            raise DuplicateCommandError('Duplicate Key detected', command.command)
 
     # add additional commands and check for duplicates
     for command in extensions:
@@ -70,27 +38,28 @@ def build_command_dict(default, extensions):
             try:
                 command_dict[command.command] = command
             except KeyError:
-                raise DuplicateKeyError('Duplicate Key detected', command.command)
+                raise DuplicateCommandError('Duplicate Key detected', command.command)
         else:
-            raise DuplicateKeyError('Duplicate Key detected', command.command)
+            raise DuplicateCommandError('Duplicate Key detected', command.command)
 
     return command_dict
 
 
 class ArgumentParser(object):
+    """Parse commandline arguments utilizing an inner argparse.ArgumentParser object
     """
-    """
-
-    def __init__(self, dispatcher):
+    def __init__(self, subcommander):
+        """create the inner ArgumentParser and setup the help text
+        :param Subcommander subcommander: the outer Subcommander to get all available commands
         """
-        """
+        # inner argumentparser
         self._subparser = argparse.ArgumentParser()
-
+        # perpare help text for the available subcommands
         positional_args = ''
-        for cmd_key, cmd_obj in dispatcher._commands.items():
+        for cmd_key, cmd_obj in subcommander._commands.items():
             positional_args = positional_args + '    {}    {}\n'.format(
                                 cmd_obj.command, cmd_obj.description)
-
+        # build usage text
         self._usage = (
             '{} ({})\n'
             '\n'
@@ -101,28 +70,28 @@ class ArgumentParser(object):
             '\n'
             'optional arguments:\n'
             '   -h, --help      show this help message and exit'
-            '').format(dispatcher._name, dispatcher._version, dispatcher._cmd, positional_args)
-
+            '').format(subcommander._name, subcommander._version, subcommander._cmd, positional_args)
+        # overwrite the inner argumentparser help method to print the custom usage build above
         setattr(self._subparser, 'format_help', lambda: print(self._usage))
 
 
-
-    def print_help(self):
-        print(self._usage)
-
     def add_argument(self, *args, **kwargs):
-        """
+        """wrapper to forward to inner ArgumentParser add_argument method
         """
         return self._subparser.add_argument(*args, **kwargs)
 
     def parse_args(self, *args, **kwargs):
-        """
+        """wrapper to forward to inner ArgumentParser parse_args method
         """
         return self._subparser.parse_args(*args, **kwargs)
 
 
-class CommandDispatcher(object):
-    """
+class Subcommander(object):
+    """Subcommander class that takes a list of subcommands to execute
+    :param [Command] _default_commands: a list of default commands. used if further subclassing is necessary
+    :param str _name: the name of the application
+    :param str _cmd: the command used to execute the app from the commandline
+    :param str _version: version of the application
     """
     _default_commands = []
     _name = 'Subcommander'
@@ -130,24 +99,20 @@ class CommandDispatcher(object):
     _version = '1.0'
 
     def __init__(self, extensions=None):
-        """
+        """setup the argument dispatching and add extended commands if provided
+        :param [Command] extensions: a list of optional Commands
         """
         # merge default commands and custom app commands
         if extensions is not None:
             try:
                 self._commands = build_command_dict(self.__class__._default_commands, extensions)
-            except DuplicateKeyError as err:
+            except DuplicateCommandError as err:
                 print('Command Error!'
                     'Command duplication detected! Could not initialize custom commands.'
                     'Command \'{}\' already exists!'.format(err.key))
                 exit(1)
         else:
             self._commands = build_command_dict(self.__class__._default_commands, [])
-
-        # build usage text
-        # usage = '{} <command> [<args>]\n'.format(self.__class__._base_command)
-        # for cmd_key, cmd_obj in self._commands.items():
-        #     usage = usage + '    {}    {}\n'.format(cmd_obj.command, cmd_obj.description)
 
         # dispatch commands
         parser = ArgumentParser(self)
@@ -161,5 +126,5 @@ class CommandDispatcher(object):
             parser.print_help()
             exit(1)
 
-        # # use dispatch pattern to invoke method with same name
-        # getattr(self, args.command)()
+        # use dispatch pattern to invoke method with same name
+        self._commands[arguments.command]()(sys.argv[2:])
