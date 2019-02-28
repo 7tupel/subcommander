@@ -3,7 +3,7 @@
 import argparse
 import sys
 
-from command import Command
+from .command import Command
 
 class DuplicateCommandError(Exception):
     """Error if duplicate commands are detected
@@ -85,6 +85,10 @@ class ArgumentParser(object):
         """
         return self._subparser.parse_args(*args, **kwargs)
 
+    def print_help(self):
+        """print usage
+        """
+        print(self._usage)
 
 class Subcommander(object):
     """Subcommander class that takes a list of subcommands to execute

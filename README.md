@@ -23,4 +23,4 @@ Please see the examples directory for a working example
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE.txt](LICENSE.txt) file for details
+This project is licensed under the Apache 2.0 - see the [LICENSE.txt](LICENSE.txt) file for details

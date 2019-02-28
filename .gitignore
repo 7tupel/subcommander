@@ -2,3 +2,4 @@
 __pycache__/*
 dist/subcommander-0.1.tar.gz
 MANIFEST
+build/
